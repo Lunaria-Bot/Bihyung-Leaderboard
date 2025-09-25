@@ -11,16 +11,16 @@ REDIS_URL = os.getenv("REDIS_URL")
 GUILD_ID = 1196690004852883507
 MAZOKU_BOT_ID = 1242388858897956906
 
-# Rôles bonus
+# Point bonus ranks
 BONUS_ROLES = {1298320344037462177, 1200391843830055004}
 
-# Points par rareté
+# Points per Rarity 
 RARITY_POINTS = {
-    "1342202221558763571": 1,   # Common
-    "1342202219574857788": 3,   # Rare
-    "1342202597389373530": 7,   # Super Rare
-    # ⚠️ même ID donné pour SSR, à corriger si besoin
-    "1342202203515125801": 17   # Ultra Rare
+    "1342202221558763571": 1,   #C
+    "1342202219574857788": 3,   #R
+    "1342202597389373530": 7,   #SR
+    "1342202212948115510": 13,  #SSR
+    "1342202203515125801": 17   #UR
 }
 
 EMOJI_REGEX = re.compile(r"<a?:\w+:(\d+)>")

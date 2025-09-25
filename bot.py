@@ -294,6 +294,14 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
         # 🔎 Nouveau log spécial
         log.info("👤 Joueur détecté: %s (ID: %s)", member.display_name, member.id)
 
+        # ✅ Protection anti-doublon avec Redis
+        claim_key = f"claim:{after.id}:{user_id}"
+        already = await client.redis.get(claim_key)
+        if already:
+            log.debug("⚠️ Claim déjà traité (%s). Ignoré.", claim_key)
+            return
+        await client.redis.set(claim_key, "1", ex=86400)  # expire après 24h
+
         # Détection rareté via emojis
         rarity_points = 0
         text_to_scan = [embed.title or "", embed.description or ""]
@@ -336,4 +344,3 @@ if not REDIS_URL:
 
 log.info("🚀 Tentative de connexion avec Discord...")
 client.run(TOKEN)
-

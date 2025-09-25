@@ -217,4 +217,7 @@ async def on_message(message: discord.Message):
 # Entry point
 # ----------------
 if not TOKEN:
-    raise RuntimeError("DISCORD_TOKEN")
+    raise RuntimeError("DISCORD_TOKEN_LEADERBOARD manquant")
+
+log.info("🚀 Tentative de connexion avec Discord...")
+client.run(TOKEN)

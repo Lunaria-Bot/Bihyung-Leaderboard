@@ -233,82 +233,93 @@ async def on_message(message: discord.Message):
     if not (message.author.bot and message.author.id == MAZOKU_BOT_ID):
         return
 
-    # Debug complet
-    log.debug("Message reçu de Mazoku")
-    if message.embeds:
-        log.debug("Titre embed: %s", message.embeds[0].title)
-        log.debug("Description embed: %s", message.embeds[0].description)
-
     if not message.embeds:
         return
 
     embed = message.embeds[0]
     title = (embed.title or "").lower()
-    desc = (embed.description or "").lower()
 
-    # Cas 1 : juste l'annonce d'un Auto Summon → pas de points
+    # Cas : annonce Auto Summon → pas de points
     if "auto summon" in title and "claimed" not in title:
         log.debug("Annonce d'un Auto Summon détectée (pas de points).")
         return
 
-    # Cas 2 : claim effectif d'un Auto Summon
-    if "auto summon" in title and "claimed" in title:
-        log.debug("Détection d’un claim Auto Summon !")
+@client.event
+async def on_message_edit(before: discord.Message, after: discord.Message):
+    if client.stopped or client.paused:
+        return
+    if not client.redis:
+        return
+    if after.author.id != MAZOKU_BOT_ID:
+        return
+    if after.guild and after.guild.id != GUILD_ID:
+        return
+    if not after.embeds:
+        return
 
-        # Trouver le joueur (dans description, champs ou footer)
-        match = re.search(r"<@!?(\d+)>", embed.description or "")
+    embed = after.embeds[0]
+    title = (embed.title or "").lower()
+    desc = (embed.description or "").lower()
+
+    log.debug("Message édité par Mazoku: titre=%s desc=%s", embed.title, embed.description)
+
+    # ✅ Cas: Auto Summon édité en Auto Summon Claimed
+    if "auto summon claimed" in title:
+        log.debug("Détection d’un Auto Summon Claimed !")
+
+        # Trouver le joueur (souvent dans le footer ou champs)
+        match = None
+        if embed.footer and embed.footer.text:
+            match = re.search(r"<@!?(\d+)>", embed.footer.text)
         if not match and embed.fields:
             for field in embed.fields:
-                match = re.search(r"<@!?(\d+)>", (field.value or ""))
+                match = re.search(r"<@!?(\d+)>", field.value or "")
                 if match:
                     break
-        if not match and embed.footer and embed.footer.text:
-            match = re.search(r"<@!?(\d+)>", embed.footer.text)
 
-        if match:
-            user_id = int(match.group(1))
-            member = message.guild.get_member(user_id)
-            if not member:
-                log.warning("⚠️ Joueur trouvé (%s) mais pas présent dans le serveur.", user_id)
-                return
-
-            log.info("Claim détecté par %s (%s)", member.display_name, member.id)
-
-            # Détection rareté via emojis
-            rarity_points = 0
-            text_to_scan = [embed.title or "", embed.description or ""]
-            if embed.fields:
-                for field in embed.fields:
-                    text_to_scan.append(field.name or "")
-                    text_to_scan.append(field.value or "")
-            if embed.footer and embed.footer.text:
-                text_to_scan.append(embed.footer.text)
-
-            for text in text_to_scan:
-                matches = EMOJI_REGEX.findall(text)
-                if matches:
-                    log.debug("Emojis trouvés: %s", matches)
-                for emote_id in matches:
-                    if emote_id in RARITY_POINTS:
-                        rarity_points = RARITY_POINTS[emote_id]
-                        log.info("Rareté détectée: %s → %s points", emote_id, rarity_points)
-                        break
-                if rarity_points:
-                    break
-
-            if rarity_points:
-                bonus = 1 if any(r.id in BONUS_ROLES for r in member.roles) else 0
-                total_points = rarity_points + bonus
-                await client.redis.hincrby("leaderboard", str(user_id), total_points)
-                new_score = await client.redis.hget("leaderboard", str(user_id))
-                log.info(
-                    "%s gagne %s points (base %s + bonus %s) → Nouveau score: %s",
-                    member.display_name, total_points, rarity_points, bonus, new_score
-                )
-            else:
-                log.warning("⚠️ Aucun emoji de rareté trouvé dans l’embed de claim.")
-        else:
+        if not match:
             log.warning("⚠️ Aucun joueur détecté dans l’embed de claim.")
+            return
+
+        user_id = int(match.group(1))
+        member = after.guild.get_member(user_id)
+        if not member:
+            log.warning("⚠️ Joueur trouvé (%s) mais pas présent dans le serveur.", user_id)
+            return
+
+        log.info("Claim détecté par %s (%s)", member.display_name, member.id)
+
+        # Détection rareté via emojis
+        rarity_points = 0
+        text_to_scan = [embed.title or "", embed.description or ""]
+        if embed.fields:
+            for field in embed.fields:
+                text_to_scan.append(field.name or "")
+                text_to_scan.append(field.value or "")
+        if embed.footer and embed.footer.text:
+            text_to_scan.append(embed.footer.text)
+
+        for text in text_to_scan:
+            matches = EMOJI_REGEX.findall(text)
+            for emote_id in matches:
+                if emote_id in RARITY_POINTS:
+                    rarity_points = RARITY_POINTS[emote_id]
+                    log.info("Rareté détectée: %s → %s points", emote_id, rarity_points)
+                    break
+            if rarity_points:
+                break
+
+        if rarity_points:
+            bonus = 1 if any(r.id in BONUS_ROLES for r in member.roles) else 0
+            total_points = rarity_points + bonus
+            await client.redis.hincrby("leaderboard", str(user_id), total_points)
+            new_score = await client.redis.hget("leaderboard", str(user_id))
+            log.info(
+                "%s gagne %s points (base %s + bonus %s) → Nouveau score: %s",
+                member.display_name, total_points, rarity_points, bonus, new_score
+            )
+        else:
+            log.warning("⚠️ Aucun emoji de rareté trouvé dans l’embed de claim.")
 
 # ----------------
 # Entry point

@@ -28,7 +28,6 @@ RARITY_POINTS = {
     "1342202221558763571": 1,   # Common
     "1342202219574857788": 3,   # Rare
     "1342202597389373530": 7,   # Super Rare
-    # ⚠️ même ID donné pour SSR, à corriger si besoin
     "1342202203515125801": 17   # Ultra Rare
 }
 
@@ -51,7 +50,7 @@ class LeaderboardBot(discord.Client):
         try:
             self.redis = await aioredis.from_url(REDIS_URL, decode_responses=True)
             log.info("✅ Redis connecté")
-        except Exception as e:
+        except Exception:
             log.exception("❌ Impossible de se connecter à Redis")
             self.redis = None
 
@@ -159,7 +158,7 @@ async def on_message(message: discord.Message):
         title = (embed.title or "").lower()
         desc = embed.description or ""
 
-        if "summon claimed" in title:
+        if "summon claimed" in title or "card claimed" in title or "auto summon claimed" in title:
             log.debug("Détection d’un claim !")
 
             # Trouver le joueur
@@ -176,7 +175,7 @@ async def on_message(message: discord.Message):
                 user_id = int(match.group(1))
                 member = message.guild.get_member(user_id)
                 if not member:
-                    log.warning("Impossible de trouver le membre %s dans le serveur.", user_id)
+                    log.warning("⚠️ Joueur trouvé (%s) mais pas présent dans le serveur.", user_id)
                     return
 
                 log.info("Claim détecté par %s (%s)", member.display_name, member.id)
@@ -211,7 +210,9 @@ async def on_message(message: discord.Message):
                     log.info("%s gagne %s points (base %s + bonus %s) → Nouveau score: %s",
                              member.display_name, total_points, rarity_points, bonus, new_score)
                 else:
-                    log.warning("Aucun emoji de rareté trouvé dans le message.")
+                    log.warning("⚠️ Aucun emoji de rareté trouvé dans l’embed de claim.")
+            else:
+                log.warning("⚠️ Aucun joueur détecté dans l’embed de claim."
 
 # ----------------
 # Entry point

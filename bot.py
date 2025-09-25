@@ -212,7 +212,7 @@ async def on_message(message: discord.Message):
                 else:
                     log.warning("⚠️ Aucun emoji de rareté trouvé dans l’embed de claim.")
             else:
-                log.warning("⚠️ Aucun joueur détecté dans l’embed de claim."
+                log.warning("⚠️ Aucun joueur détecté dans l’embed de claim.")
 
 # ----------------
 # Entry point

@@ -84,6 +84,30 @@ async def leaderboard(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed)
 
+@client.tree.command(name="leaderboard-pause", description="Met le leaderboard en pause (Admin only)")
+async def leaderboard_pause(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ Admin only.", ephemeral=True)
+        return
+    client.paused = True
+    await interaction.response.send_message("⏸️ Leaderboard mis en pause.")
+
+@client.tree.command(name="leaderboard-resume", description="Relance le leaderboard (Admin only)")
+async def leaderboard_resume(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ Admin only.", ephemeral=True)
+        return
+    client.paused = False
+    await interaction.response.send_message("▶️ Leaderboard relancé.")
+
+@client.tree.command(name="leaderboard-stop", description="Stoppe le leaderboard (Admin only)")
+async def leaderboard_stop(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ Admin only.", ephemeral=True)
+        return
+    client.stopped = True
+    await interaction.response.send_message("⏹️ Leaderboard stoppé.")
+
 @client.tree.command(name="leaderboard-reset", description="Réinitialise tous les scores (Admin only)")
 async def leaderboard_reset(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
@@ -188,3 +212,9 @@ async def on_message(message: discord.Message):
                              member.display_name, total_points, rarity_points, bonus, new_score)
                 else:
                     log.warning("Aucun emoji de rareté trouvé dans le message.")
+
+# ----------------
+# Entry point
+# ----------------
+if not TOKEN:
+    raise RuntimeError("DISCORD_TOKEN

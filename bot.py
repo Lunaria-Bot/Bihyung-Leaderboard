@@ -5,6 +5,7 @@ import os
 import re
 import redis.asyncio as aioredis
 import logging
+import itertools
 
 # --- Logging configuration ---
 logging.basicConfig(
@@ -65,6 +66,20 @@ class LeaderboardBot(discord.Client):
         await self.tree.sync(guild=guild)
 
 client = LeaderboardBot()
+
+# ----------------
+# Status rotation
+# ----------------
+STATUSES = [
+    discord.Activity(type=discord.ActivityType.watching, name="challengers climb the leaderboard of this scenario."),
+    discord.Activity(type=discord.ActivityType.playing, name="with the struggles of constellations."),
+    discord.Activity(type=discord.ActivityType.listening, name="the void until the next scenario begins…")
+]
+
+async def cycle_status():
+    for activity in itertools.cycle(STATUSES):
+        await client.change_presence(activity=activity, status=discord.Status.online)
+        await asyncio.sleep(300)  # change toutes les 5 minutes
 
 # ----------------
 # Slash commands
@@ -132,14 +147,12 @@ async def leaderboard_full(interaction: discord.Interaction):
 
     # Découpage en pages de 20 lignes max
     chunks = [description_lines[i:i+20] for i in range(0, len(description_lines), 20)]
-    # Première réponse
     first_embed = discord.Embed(
         title=f"📜 Classement complet — Page 1/{len(chunks)}",
         description="\n".join(chunks[0]),
         color=discord.Color.blue()
     )
     await interaction.response.send_message(embed=first_embed, ephemeral=True)
-    # Pages suivantes
     for idx in range(1, len(chunks)):
         embed = discord.Embed(
             title=f"📜 Classement complet — Page {idx+1}/{len(chunks)}",
@@ -148,6 +161,9 @@ async def leaderboard_full(interaction: discord.Interaction):
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
+# ----------------
+# Admin commands
+# ----------------
 @client.tree.command(name="leaderboard-pause", description="Met le leaderboard en pause (Admin only)")
 async def leaderboard_pause(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
@@ -197,6 +213,7 @@ async def debug_score(interaction: discord.Interaction, member: discord.Member):
 async def on_ready():
     log.info("✅ Leaderboard bot connecté en tant que %s (%s)", client.user, client.user.id)
     client.loop.create_task(heartbeat())
+    client.loop.create_task(cycle_status())  # lancement du cycle de statuts
 
 async def heartbeat():
     while True:
@@ -233,7 +250,7 @@ async def on_message(message: discord.Message):
         match = re.search(r"Claimed By\s+<@!?(\d+)>", desc)
         if not match and embed.fields:
             for field in embed.fields:
-                match = re.search(r"<@!?(\d+)>", field.value or "")
+                match = re.search(r"<@!?(\d+)>", (field.value or ""))
                 if match:
                     break
         if not match and embed.footer and embed.footer.text:
@@ -294,3 +311,4 @@ if not REDIS_URL:
 
 log.info("🚀 Tentative de connexion avec Discord...")
 client.run(TOKEN)
+

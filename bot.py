@@ -267,15 +267,19 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
     if "auto summon claimed" in title:
         log.debug("Détection d’un Auto Summon Claimed !")
 
-        # Trouver le joueur (souvent dans le footer ou champs)
-        match = None
-        if embed.footer and embed.footer.text:
-            match = re.search(r"<@!?(\d+)>", embed.footer.text)
+        # ✅ Chercher le joueur dans la description
+        match = re.search(r"<@!?(\d+)>", embed.description or "")
+
+        # Sinon chercher dans les champs
         if not match and embed.fields:
             for field in embed.fields:
                 match = re.search(r"<@!?(\d+)>", field.value or "")
                 if match:
                     break
+
+        # Sinon chercher dans le footer
+        if not match and embed.footer and embed.footer.text:
+            match = re.search(r"<@!?(\d+)>", embed.footer.text)
 
         if not match:
             log.warning("⚠️ Aucun joueur détecté dans l’embed de claim.")
@@ -287,7 +291,8 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
             log.warning("⚠️ Joueur trouvé (%s) mais pas présent dans le serveur.", user_id)
             return
 
-        log.info("Claim détecté par %s (%s)", member.display_name, member.id)
+        # 🔎 Nouveau log spécial
+        log.info("👤 Joueur détecté: %s (ID: %s)", member.display_name, member.id)
 
         # Détection rareté via emojis
         rarity_points = 0
@@ -315,7 +320,7 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
             await client.redis.hincrby("leaderboard", str(user_id), total_points)
             new_score = await client.redis.hget("leaderboard", str(user_id))
             log.info(
-                "%s gagne %s points (base %s + bonus %s) → Nouveau score: %s",
+                "🏅 %s gagne %s points (base %s + bonus %s) → Nouveau score: %s",
                 member.display_name, total_points, rarity_points, bonus, new_score
             )
         else:
@@ -331,3 +336,4 @@ if not REDIS_URL:
 
 log.info("🚀 Tentative de connexion avec Discord...")
 client.run(TOKEN)
+

@@ -233,21 +233,25 @@ async def on_message(message: discord.Message):
     if not (message.author.bot and message.author.id == MAZOKU_BOT_ID):
         return
 
-    log.debug("Message reçu de Mazoku: %s", message.embeds[0].title if message.embeds else "pas d’embed")
+    # Debug complet
+    log.debug("Message reçu de Mazoku")
+    if message.embeds:
+        log.debug("Titre embed: %s", message.embeds[0].title)
+        log.debug("Description embed: %s", message.embeds[0].description)
 
     if not message.embeds:
         return
 
     embed = message.embeds[0]
     title = (embed.title or "").lower()
-    desc = embed.description or ""
+    desc = (embed.description or "").lower()
 
     # ✅ Désormais seuls les Auto Summon comptent
-    if "auto summon claimed" in title:
+    if ("auto summon" in title and "claimed" in title) or ("auto summon" in desc and "claimed" in desc):
         log.debug("Détection d’un claim (Auto Summon uniquement) !")
 
         # Trouver le joueur (dans description, champs ou footer)
-        match = re.search(r"Claimed By\s+<@!?(\d+)>", desc)
+        match = re.search(r"<@!?(\d+)>", embed.description or "")
         if not match and embed.fields:
             for field in embed.fields:
                 match = re.search(r"<@!?(\d+)>", (field.value or ""))

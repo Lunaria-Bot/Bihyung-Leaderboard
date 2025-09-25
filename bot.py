@@ -246,9 +246,14 @@ async def on_message(message: discord.Message):
     title = (embed.title or "").lower()
     desc = (embed.description or "").lower()
 
-    # ✅ Désormais seuls les Auto Summon comptent
-    if ("auto summon" in title and "claimed" in title) or ("auto summon" in desc and "claimed" in desc):
-        log.debug("Détection d’un claim (Auto Summon uniquement) !")
+    # Cas 1 : juste l'annonce d'un Auto Summon → pas de points
+    if "auto summon" in title and "claimed" not in title:
+        log.debug("Annonce d'un Auto Summon détectée (pas de points).")
+        return
+
+    # Cas 2 : claim effectif d'un Auto Summon
+    if "auto summon" in title and "claimed" in title:
+        log.debug("Détection d’un claim Auto Summon !")
 
         # Trouver le joueur (dans description, champs ou footer)
         match = re.search(r"<@!?(\d+)>", embed.description or "")

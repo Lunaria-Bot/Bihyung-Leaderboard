@@ -242,9 +242,9 @@ async def on_message(message: discord.Message):
     title = (embed.title or "").lower()
     desc = embed.description or ""
 
-    # Détection de claim (plusieurs variantes)
-    if ("summon claimed" in title) or ("card claimed" in title) or ("auto summon claimed" in title):
-        log.debug("Détection d’un claim !")
+    # ✅ Désormais seuls les Auto Summon comptent
+    if "auto summon claimed" in title:
+        log.debug("Détection d’un claim (Auto Summon uniquement) !")
 
         # Trouver le joueur (dans description, champs ou footer)
         match = re.search(r"Claimed By\s+<@!?(\d+)>", desc)
@@ -311,4 +311,3 @@ if not REDIS_URL:
 
 log.info("🚀 Tentative de connexion avec Discord...")
 client.run(TOKEN)
-

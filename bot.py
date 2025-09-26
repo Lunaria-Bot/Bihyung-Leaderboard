@@ -232,6 +232,8 @@ async def on_message(message: discord.Message):
         return
     if not (message.author.bot and message.author.id == MAZOKU_BOT_ID):
         return
+    if message.channel.id != 1297601686562541608:  # ✅ Only this channel
+        return
 
     if not message.embeds:
         return
@@ -254,6 +256,8 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
         return
     if after.guild and after.guild.id != GUILD_ID:
         return
+    if after.channel.id != 1297601686562541608:  # ✅ Only this channel
+        return
     if not after.embeds:
         return
 
@@ -267,17 +271,13 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
     if "auto summon claimed" in title:
         log.debug("Detected an Auto Summon Claimed!")
 
-        # Find the player (first check description)
+        # Find the player
         match = re.search(r"<@!?(\d+)>", embed.description or "")
-
-        # If not found, check fields
         if not match and embed.fields:
             for field in embed.fields:
                 match = re.search(r"<@!?(\d+)>", field.value or "")
                 if match:
                     break
-
-        # If still not found, check footer
         if not match and embed.footer and embed.footer.text:
             match = re.search(r"<@!?(\d+)>", embed.footer.text)
 
@@ -291,16 +291,15 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
             log.warning("⚠️ Player found (%s) but not in server.", user_id)
             return
 
-        # 🔎 Log detected player
         log.info("👤 Player detected: %s (ID: %s)", member.display_name, member.id)
 
-        # ✅ Anti-duplicate protection with Redis
+        # Anti-duplicate protection with Redis
         claim_key = f"claim:{after.id}:{user_id}"
         already = await client.redis.get(claim_key)
         if already:
             log.debug("⚠️ Claim already processed (%s). Ignored.", claim_key)
             return
-        await client.redis.set(claim_key, "1", ex=86400)  # expire after 24h
+        await client.redis.set(claim_key, "1", ex=86400)
 
         # Detect rarity via emojis
         rarity_points = 0
@@ -323,16 +322,16 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
                 break
 
         if rarity_points:
-            bonus = 1 if any(r.id in BONUS_ROLES for r in member.roles) else 0
-            total_points = rarity_points + bonus
+            total_points = rarity_points  # ✅ No more bonus roles
             await client.redis.hincrby("leaderboard", str(user_id), total_points)
             new_score = await client.redis.hget("leaderboard", str(user_id))
             log.info(
-                "🏅 %s gains %s points (base %s + bonus %s) → New score: %s",
-                member.display_name, total_points, rarity_points, bonus, new_score
+                "🏅 %s gains %s points → New score: %s",
+                member.display_name, total_points, new_score
             )
         else:
             log.warning("⚠️ No rarity emoji found in claim embed.")
+
 
 # ----------------
 # Entry point

@@ -92,7 +92,7 @@ async def leaderboard(interaction: discord.Interaction):
 
     scores = await client.redis.hgetall("leaderboard")
     if not scores:
-        await interaction.response.send_message("📊 Aucun point enregistré pour l'instant.", ephemeral=True)
+        await interaction.response.send_message("📊 No Point yet registered.", ephemeral=True)
         return
 
     sorted_scores = sorted(scores.items(), key=lambda x: int(x[1]), reverse=True)
@@ -113,14 +113,14 @@ async def leaderboard(interaction: discord.Interaction):
             break
 
     embed = discord.Embed(
-        title="🏆 Leaderboard du serveur",
+        title="🏆 Leaderboard of Sunflower",
         description="\n".join(description_lines),
         color=discord.Color.gold()
     )
     if user_rank:
-        embed.set_footer(text=f"Ton rang : #{user_rank[0]} avec {user_rank[1]} points")
+        embed.set_footer(text=f"Your rank : #{user_rank[0]} You have {user_rank[1]} points")
     else:
-        embed.set_footer(text="Tu n’as pas encore de points, participe pour entrer dans le classement !")
+        embed.set_footer(text="You dont have point yet, participate to enter the leaderboard !")
 
     await interaction.response.send_message(embed=embed)
 
